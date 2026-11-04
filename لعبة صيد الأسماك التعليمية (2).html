@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>لعبة صيد الأسماك التعليمية</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Noto Naskh Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Noto Naskh Arabic', serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: #1F3864;
+      color: #ffffff;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* ألوان الهوية البصرية */
+    .bg-navy { background-color: #1F3864; }
+    .bg-gold { background-color: #C9A227; }
+    .text-gold { color: #C9A227; }
+    .border-gold { border-color: #C9A227; }
+    .bg-ice-blue { background-color: #D6E4F0; }
+    .text-navy { color: #1F3864; }
+
+    /* خلفية البحر والأمواج */
+    .ocean-bg {
+      background: linear-gradient(180deg, #1b4965 0%, #1F3864 40%, #0b132b 100%);
+    }
+
+    /* انيميشن النافذة المنبثقة */
+    @keyframes modalPop {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .modal-anim {
+      animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* تخصيص أزرار الخيارات */
+    .option-btn {
+      transition: all 0.2s ease;
+      background: rgba(214, 228, 240, 0.15);
+      border: 2px solid rgba(201, 162, 39, 0.4);
+    }
+    .option-btn:hover, .option-btn:active {
+      background: rgba(201, 162, 39, 0.3);
+      border-color: #C9A227;
+      transform: translateY(-2px);
+    }
+
+    /* تموجات الماء بالأعلى */
+    .wave-container {
+      position: absolute;
+      top: 50px;
+      left: 0;
+      right: 0;
+      height: 25px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .wave {
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0,0 C150,90 350,-40 550,40 C750,120 900,10 1200,40 L1200,0 L0,0 Z" fill="rgba(214, 228, 240, 0.25)"></path></svg>') repeat-x;
+      position: absolute;
+      width: 2400px;
+      height: 100%;
+      animation: waveMove 12s linear infinite;
+    }
+    @keyframes waveMove {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-1200px); }
+    }
+  </style>
+</head>
+<body class="ocean-bg relative flex flex-col justify-between select-none">
+
+  <!-- الترويسة الثابتة الشريط العلوي -->
+  <header id="mainHeader" class="fixed top-0 left-0 right-0 z-40 bg-navy/90 backdrop-blur border-b-2 border-gold px-4 py-2 flex justify-between items-center transition-all duration-300 shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center border border-gold text-xl">
+        🎣
+      </div>
+      <div>
+        <h1 id="headerTitle" class="text-xl md:text-2xl font-bold text-gold tracking-wide">صيد الأسماك</h1>
+        <p id="headerSubtitle" class="text-xs text-ice-blue hidden md:block">لعبة تعليمية تفاعلية ممتعة</p>
+      </div>
+    </div>
+
+    <!-- معلومات الطالب والتقدم (تظهر أثناء اللعب) -->
+    <div id="gameStats" class="hidden flex items-center gap-4">
+      <div class="bg-navy/80 px-3 py-1.5 rounded-lg border border-gold/40 flex items-center gap-2">
+        <span class="text-xs text-ice-blue">الطالب/ة:</span>
+        <span id="studentDisplayName" class="text-sm md:text-base font-bold text-gold"></span>
+      </div>
+      <div class="bg-navy/80 px-3 py-1.5 rounded-lg border border-gold/40 flex items-center gap-2">
+        <span class="text-xs text-ice-blue">الأسماك:</span>
+        <span id="scoreDisplay" class="text-sm md:text-base font-bold text-emerald-400">0 / 17</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- المساحة الآمنة أسفل الترويسة -->
+  <div class="h-16 w-full flex-shrink-0"></div>
+
+  <!-- خلفية أمواج متحركة تزينية -->
+  <div class="wave-container">
+    <div class="wave"></div>
+  </div>
+
+  <!-- الشاشة الافتتاحية -->
+  <div id="startScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/95 backdrop-blur-md">
+    <div class="max-w-lg w-full bg-navy border-2 border-gold rounded-2xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden modal-anim">
+      <!-- زخرفة داخلية -->
+      <div class="absolute -top-10 -right-10 w-32 h-32 bg-gold/10 rounded-full blur-xl pointer-events-none"></div>
+      
+      <div class="text-6xl mb-3 animate-bounce">🐟</div>
+      <h2 class="text-3xl font-bold text-gold mb-2">أهلاً وسهلاً بكم أبطالنا!</h2>
+      <p class="text-ice-blue mb-6 leading-relaxed text-sm md:text-base">
+        مرحباً بكم في رحلة صيد الأسماك الاستكشافية. استعدوا لاختبار معلوماتكم واصطياد الإجابات الصحيحة من أعماق البحر!
+      </p>
+
+      <form id="startForm" onsubmit="startGame(event)" class="space-y-5">
+        <div class="text-right">
+          <label for="studentNameInput" class="block text-sm font-semibold text-gold mb-1 mr-1">اسم الطالب / الطالبة:</label>
+          <input type="text" id="studentNameInput" required placeholder="أدخل اسمك الكريم هنا..."
+            class="w-full px-4 py-3 rounded-xl bg-ice-blue/10 border-2 border-gold/50 text-white placeholder-white/50 focus:outline-none focus:border-gold text-lg transition-all text-center font-bold">
+        </div>
+
+        <button type="submit" 
+          class="w-full py-4 bg-gold hover:bg-yellow-500 text-navy font-bold text-xl rounded-xl shadow-lg hover:shadow-gold/30 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
+          <span>ابدأ اللعبة</span>
+          <span class="text-2xl">🎣</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- منطقة اللعب Canvas -->
+  <main class="relative flex-grow w-full h-full overflow-hidden cursor-pointer">
+    <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+  </main>
+
+  <!-- نافذة السؤال (Modal) -->
+  <div id="questionModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+    <div class="max-w-xl w-full bg-navy border-2 border-gold rounded-2xl p-6 shadow-2xl relative modal-anim">
+      <!-- رأس السؤال -->
+      <div class="flex justify-between items-center border-b border-gold/30 pb-3 mb-4">
+        <span id="questionCategory" class="text-xs bg-gold/20 text-gold px-3 py-1 rounded-full border border-gold/40">سؤال صيد</span>
+        <span id="questionNumber" class="text-xs text-ice-blue font-bold"></span>
+      </div>
+
+      <!-- نص السؤال -->
+      <h3 id="questionText" class="text-lg md:text-xl font-bold text-white mb-6 leading-relaxed text-center min-h-[60px] flex items-center justify-center">
+        <!-- يتم إدخال السؤال هنا -->
+      </h3>
+
+      <!-- خيارات الإجابة -->
+      <div id="optionsContainer" class="space-y-3 mb-4">
+        <!-- الأزرار تولد بالديناميكية -->
+      </div>
+
+      <!-- التغذية الراجعة داخل النافذة -->
+      <div id="modalFeedback" class="hidden text-center py-2 px-4 rounded-xl font-bold text-sm transition-all duration-300"></div>
+    </div>
+  </div>
+
+  <!-- شاشة النهاية -->
+  <div id="endScreen" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-navy/95 backdrop-blur-md">
+    <div class="max-w-md w-full bg-navy border-2 border-gold rounded-2xl p-8 text-center shadow-2xl relative modal-anim">
+      <div class="text-6xl mb-4 flex justify-center gap-2">📚✍️</div>
+      <h2 class="text-3xl font-bold text-gold mb-2">مبارك النجاح والتفوق!</h2>
+      <p id="endStudentGreeting" class="text-lg text-ice-blue mb-4"></p>
+      
+      <div class="bg-ice-blue/10 border border-gold/30 rounded-xl p-4 mb-6">
+        <p class="text-sm text-ice-blue">لقد قمت باصطياد كافة الأسماك بنجاح</p>
+        <p class="text-2xl font-bold text-gold mt-1" id="finalScoreText">17 / 17</p>
+      </div>
+
+      <button onclick="restartGame()" 
+        class="w-full py-3.5 bg-gold hover:bg-yellow-500 text-navy font-bold text-lg rounded-xl shadow-lg transition-all active:scale-95">
+        إعادة اللعب 🔄
+      </button>
+    </div>
+  </div>
+
+  <!-- canvas تم إلغاء مؤثرات الجسيمات/النجوم منه -->
+  <canvas id="effectsCanvas" class="fixed inset-0 pointer-events-none z-50 hidden"></canvas>
+
+  <script>
+    // --- بنية بيانات الأسئلة الـ 17 ---
+    const questionsData = [
+      { id: 1, type: 'tf', text: 'كان الإنسانُ قبل أن يخلقه الله معدومًا ليس مذكورًا.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 2, type: 'tf', text: 'خلق الله السمع والبصر للاختبار.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 3, type: 'tf', text: 'أرسل الله الرسل وأنزل الكتب هدايةً للناس.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 4, type: 'tf', text: 'انقسم الناس إلى قسمين: إما شاكرًا وإما كفورًا.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 5, type: 'tf', text: 'من كذب الرسل وكفر بالله دخل الجنة.', options: ['صح', 'خطأ'], correct: 1 },
+      { id: 6, type: 'tf', text: 'أعد الله للكافرين سلاسلَ وأغلالًا وسعيرًا.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 7, type: 'tf', text: 'مدح الله الذين يوفون بالنذر.', options: ['صح', 'خطأ'], correct: 0 },
+      { id: 8, type: 'tf', text: 'يطعمون الطعام للفقراء وهم كارهون.', options: ['صح', 'خطأ'], correct: 1 },
+      
+      { id: 9, type: 'mc', text: 'قال تعالى: (هَلْ أَتَى عَلَى الإِنْسَانِ حِينٌ مِنَ الدَّهْرِ لَمْ يَكُنْ شَيْئًا مَذْكُورًا). الآية توضح أول حال الإنسان وأنه كان شيئًا لا يُذكر، وهذا مما يحث الإنسان على...', options: ['التواضع', 'الكبر'], correct: 0 },
+      { id: 10, type: 'mc', text: 'ما معنى (نبتليه) في قوله تعالى: (إِنَّا خَلَقْنَا الإِنْسَانَ مِنْ نُطْفَةٍ أَمْشَاجٍ نَبْتَلِيهِ...)?', options: ['نصيبه بالمرض', 'نختبره'], correct: 1 },
+      { id: 11, type: 'mc', text: 'هدانا الله وعرّفنا الطريق الموصل إليه وربّانا فيه فأرسل إلينا الرسل وأنزل الكتب، فماذا حدث؟', options: ['استجاب جميع الخلق واتبعوا الرسل وسلكوا طريق الهداية', 'انقسم الناس إلى فريقين: شاكرًا لنعمة الله عليه، وإلى كفورًا لنعم الله'], correct: 1 },
+      { id: 12, type: 'mc', text: 'من هو الشاكر؟', options: ['الذي يشكر الله على نعمه بلسانه فقط', 'المؤمن الذي يعمل بما أمره الله وينتهي عما نهاه الله'], correct: 1 },
+      { id: 13, type: 'mc', text: 'ما جزاء الكفور الذي كفر بنعم الله وسلك الطريق الموصل إلى الهلاك بمعصيته لله ورسوله ﷺ؟', options: ['سلاسل وأغلال', 'السعير', 'كلاهما'], correct: 2 },
+      { id: 14, type: 'mc', text: 'من هم "الأبرار" المذكورون في السورة؟', options: ['هم المؤمنون الصالحون الذين يفعلون الخير ويطيعون الله ورسوله ﷺ', 'الكفار'], correct: 0 },
+      { id: 15, type: 'mc', text: 'ما جزاء الأبرار؟', options: ['يشربون من عين دائمة الفيضان شرابًا لذيذًا من خمر ممزوج بكافور', 'من عين يفجرونها في أي مكان يريدونه', 'كلاهما'], correct: 2 },
+      { id: 16, type: 'mc', text: 'من صفات هؤلاء الأبرار:', options: ['الوفاء بالنذر', 'الخوف من الله', 'إطعام الطعام', 'جميع ما سبق'], correct: 3 },
+      { id: 17, type: 'mc', text: 'لماذا يُطعم الأبرار المحتاجين؟', options: ['لوجه الله تعالى لا يريدون منهم جزاءً ولا شكراً', 'ليمدحهم الناس'], correct: 0 }
+    ];
+
+    // --- نظام محاكاة الصوت Web Audio API ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSuccessSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      
+      // نغمة نجاح ثلاثية مبهجة (Arpeggio)
+      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      freqs.forEach((f, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, now + index * 0.08);
+        
+        gain.gain.setValueAtTime(0.2, now + index * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.3);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start(now + index * 0.08);
+        osc.stop(now + index * 0.08 + 0.3);
+      });
+    }
+
+    function playErrorSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+      
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    // --- متغيرات حالة اللعبة ---
+    let studentName = "";
+    let score = 0;
+    let canvas, ctx;
+    let fishes = [];
+    let activeFish = null;
+    let isQuestionOpen = false;
+
+    // ألوان الأسماك النابضة بالحياة
+    const fishColors = [
+      { body: '#FF6B6B', fin: '#EE5253' }, // احمر ورودي
+      { body: '#48DBFB', fin: '#0ABDE3' }, // ازرق سماوي
+      { body: '#1DD1A1', fin: '#10AC84' }, // أخضر فسفوري
+      { body: '#FECA57', fin: '#FF9F43' }, // برتقالي ذهبي
+      { body: '#FF9FF3', fin: '#F368E0' }, // بنفسجي فاتح
+    ];
+
+    // تهيئة اللعبة عند التحميل
+    window.addEventListener('load', () => {
+      canvas = document.getElementById('gameCanvas');
+      ctx = canvas.getContext('2d');
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // إضافة حدث الضغط المباشر على الشاشة / الأسماك (دعم الماوس واللمس)
+      canvas.addEventListener('click', handleCanvasClick);
+      canvas.addEventListener('touchstart', handleCanvasTouch, { passive: false });
+
+      // تحضير الفقاعات الخلفية
+      for (let i = 0; i < 25; i++) {
+        bubbles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 4 + 2,
+          speed: Math.random() * 1 + 0.5,
+          opacity: Math.random() * 0.5 + 0.2
+        });
+      }
+    });
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    // التعامل مع النقر بالماوس
+    function handleCanvasClick(e) {
+      if (isQuestionOpen) return;
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      checkFishClick(clickX, clickY);
+    }
+
+    // التعامل مع اللمس للشاشات الذكية
+    function handleCanvasTouch(e) {
+      if (isQuestionOpen) return;
+      if (e.touches && e.touches.length > 0) {
+        e.preventDefault(); // منع التمرير غير المرغوب به
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const touchY = e.touches[0].clientY - rect.top;
+        checkFishClick(touchX, touchY);
+      }
+    }
+
+    // فحص النقر المباشر على السمكة
+    function checkFishClick(x, y) {
+      for (let fish of fishes) {
+        if (fish.caught) continue;
+
+        // حساب المسافة بين مكان النقر/اللمس ومركز السمكة
+        const dx = x - fish.x;
+        const dy = y - fish.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // إذا كان النقر داخل حدود السمكة (مع هامش لمس مريح للطفل)
+        if (distance <= fish.size * 1.2) {
+          openQuestionModal(fish);
+          break;
+        }
+      }
+    }
+
+    // --- بدء اللعبة ---
+    function startGame(e) {
+      e.preventDefault();
+      const input = document.getElementById('studentNameInput');
+      if (!input.value.trim()) return;
+
+      studentName = input.value.trim();
+      initAudio();
+
+      document.getElementById('studentDisplayName').innerText = studentName;
+      document.getElementById('startScreen').classList.add('hidden');
+      document.getElementById('gameStats').classList.remove('hidden');
+
+      // تصغير الترويسة قليلاً لمساحة أكبر
+      document.getElementById('mainHeader').classList.add('py-1');
+      document.getElementById('headerTitle').classList.replace('text-2xl', 'text-lg');
+
+      // إنشاء الأسماك بناءً على الأسئلة
+      createFishes();
+
+      // بدء حلقة التحريك
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- إنشاء كائنات الأسماك ---
+    function createFishes() {
+      fishes = [];
+      const total = questionsData.length;
+      const margin = 100;
+
+      for (let i = 0; i < total; i++) {
+        const colorObj = fishColors[i % fishColors.length];
+        const dir = Math.random() > 0.5 ? 1 : -1;
+        
+        fishes.push({
+          id: i,
+          question: questionsData[i],
+          x: margin + Math.random() * (canvas.width - margin * 2),
+          y: 120 + Math.random() * (canvas.height - 200),
+          vx: (Math.random() * 0.8 + 0.6) * dir,
+          vy: (Math.random() * 0.4 - 0.2),
+          size: 34, // حجم السمكة مناسب وسهل النقر
+          color: colorObj.body,
+          finColor: colorObj.fin,
+          caught: false,
+          tailAngle: Math.random() * Math.PI,
+          tailSpeed: 0.08 + Math.random() * 0.05
+        });
+      }
+    }
+
+    // --- الحلقة الرئيسية (Game Loop) ---
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. رسم الفقاعات
+      drawBubbles();
+
+      // 2. تحديث ورسم الأسماك
+      updateAndDrawFishes();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // رسم وتحديث الفقاعات
+    function drawBubbles() {
+      ctx.fillStyle = 'rgba(214, 228, 240, 0.3)';
+      bubbles.forEach(b => {
+        b.y -= b.speed;
+        if (b.y < 50) {
+          b.y = canvas.height + 10;
+          b.x = Math.random() * canvas.width;
+        }
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // رسم وتحديث الأسماك
+    function updateAndDrawFishes() {
+      fishes.forEach(fish => {
+        if (fish.caught) return;
+
+        // الحركة الفيزيائية البسيطة (تتوقف السمكة فوراً عند فتح السؤال الخاص بها)
+        if (!isQuestionOpen || activeFish !== fish) {
+          fish.x += fish.vx;
+          fish.y += fish.vy;
+          fish.tailAngle += fish.tailSpeed;
+        }
+
+        // البقاء داخل حدود الشاشة مرئية دائماً
+        const padding = 50;
+        if (fish.x < padding) { fish.x = padding; fish.vx *= -1; }
+        if (fish.x > canvas.width - padding) { fish.x = canvas.width - padding; fish.vx *= -1; }
+        if (fish.y < 110) { fish.y = 110; fish.vy *= -1; }
+        if (fish.y > canvas.height - 60) { fish.y = canvas.height - 60; fish.vy *= -1; }
+
+        // التذبذب العمودي الهادئ
+        fish.vy += Math.sin(fish.tailAngle * 0.5) * 0.02;
+
+        // رسم السمكة
+        ctx.save();
+        ctx.translate(fish.x, fish.y);
+        // التوجيه بحسب اتجاه الحركة
+        const facingRight = fish.vx > 0;
+        if (!facingRight) {
+          ctx.scale(-1, 1);
+        }
+
+        // ذيل السمكة المتحرك
+        const tailWag = Math.sin(fish.tailAngle) * 8;
+        ctx.beginPath();
+        ctx.moveTo(-fish.size + 4, 0);
+        ctx.lineTo(-fish.size - 16, -12 + tailWag);
+        ctx.lineTo(-fish.size - 16, 12 + tailWag);
+        ctx.closePath();
+        ctx.fillStyle = fish.finColor;
+        ctx.fill();
+
+        // جسم السمكة
+        ctx.beginPath();
+        ctx.ellipse(0, 0, fish.size, fish.size * 0.65, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fish.color;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.stroke();
+
+        // زفنعة علوية
+        ctx.beginPath();
+        ctx.moveTo(-5, -fish.size * 0.6);
+        ctx.quadraticCurveTo(5, -fish.size * 1.1, 15, -fish.size * 0.4);
+        ctx.fillStyle = fish.finColor;
+        ctx.fill();
+
+        // عين السمكة
+        ctx.beginPath();
+        ctx.arc(fish.size * 0.5, -fish.size * 0.15, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(fish.size * 0.55, -fish.size * 0.15, 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+
+        // رقم السؤال على جسم السمكة لتسهيل التمييز
+        ctx.save();
+        if (!facingRight) ctx.scale(-1, 1); // ابقاء الرقم معتدلاً
+        ctx.fillStyle = '#1F3864';
+        ctx.font = 'bold 13px "Noto Naskh Arabic", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(fish.question.id, 0, 2);
+        ctx.restore();
+
+        ctx.restore();
+      });
+    }
+
+    // --- فتح نافذة السؤال ---
+    function openQuestionModal(fish) {
+      isQuestionOpen = true;
+      activeFish = fish;
+
+      const modal = document.getElementById('questionModal');
+      const q = fish.question;
+
+      document.getElementById('questionNumber').innerText = `السؤال ${q.id} من 17`;
+      document.getElementById('questionCategory').innerText = q.type === 'tf' ? 'صح أم خطأ' : 'اختيار من متعدد';
+      document.getElementById('questionText').innerText = q.text;
+
+      const optionsContainer = document.getElementById('optionsContainer');
+      optionsContainer.innerHTML = '';
+
+      const feedback = document.getElementById('modalFeedback');
+      feedback.className = 'hidden text-center py-2 px-4 rounded-xl font-bold text-sm transition-all duration-300';
+      feedback.innerText = '';
+
+      // بناء أزرار الخيارات
+      q.options.forEach((optText, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn w-full py-3 px-4 rounded-xl text-right font-semibold text-white text-base flex items-center justify-between cursor-pointer';
+        btn.innerHTML = `
+          <span>${optText}</span>
+          <span class="w-6 h-6 rounded-full border border-gold/50 flex items-center justify-center text-xs text-gold font-bold">${index + 1}</span>
+        `;
+        btn.onclick = () => handleAnswer(index, btn);
+        optionsContainer.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    // --- التعامل مع إجابة الطالب ---
+    function handleAnswer(selectedIndex, btnElement) {
+      const q = activeFish.question;
+      const feedback = document.getElementById('modalFeedback');
+      const allBtns = document.querySelectorAll('.option-btn');
+
+      // تعطيل الأزرار لمنع التكرار
+      allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+      if (selectedIndex === q.correct) {
+        // --- إجابة صحيحة ---
+        playSuccessSound();
+        btnElement.classList.add('bg-emerald-600/60', 'border-emerald-400');
+        
+        feedback.innerText = 'أحسنت! إجابة صحيحة رائعة';
+        feedback.className = 'block bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 text-center py-2 px-4 rounded-xl font-bold text-base modal-anim';
+
+        setTimeout(() => {
+          activeFish.caught = true; // إخفاء السمكة نهائياً
+          score++;
+          document.getElementById('scoreDisplay').innerText = `${score} / 17`;
+
+          closeModal();
+
+          // تحقق من انتهاء اللعبة
+          if (score >= questionsData.length) {
+            showEndScreen();
+          }
+        }, 1200);
+
+      } else {
+        // --- إجابة خاطئة ---
+        playErrorSound();
+        btnElement.classList.add('bg-rose-600/60', 'border-rose-500');
+
+        feedback.innerText = 'حاول مرة أخرى!';
+        feedback.className = 'block bg-rose-500/20 text-rose-300 border border-rose-500/50 text-center py-2 px-4 rounded-xl font-bold text-base modal-anim';
+
+        setTimeout(() => {
+          closeModal();
+          // السمكة تبقى في مكانها ليتمكن الطالب من المحاولة مجدداً
+        }, 1300);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('questionModal').classList.add('hidden');
+      isQuestionOpen = false;
+      activeFish = null;
+    }
+
+    // --- شاشة النهاية ---
+    function showEndScreen() {
+      document.getElementById('endStudentGreeting').innerText = `عاش البطل / البطلة: ${studentName}`;
+      document.getElementById('finalScoreText').innerText = `${score} / 17 إجابة صحيحة`;
+      document.getElementById('endScreen').classList.remove('hidden');
+    }
+
+    // --- إعادة اللعب ---
+    function restartGame() {
+      score = 0;
+      document.getElementById('scoreDisplay').innerText = `0 / 17`;
+      document.getElementById('endScreen').classList.add('hidden');
+      createFishes();
+    }
+  </script>
+</body>
+</html>
